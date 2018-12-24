@@ -4,8 +4,6 @@ package gui
 
 import "golang.org/x/sys/windows"
 
-type Atom uint16
-
 // winuser.rh
 const (
 	// ShowWindow() codes
@@ -125,6 +123,7 @@ const (
 	WM_DESTROY = 0x0002
 )
 
+// WndClassEx is a struct for RegisterClassEx().
 type WndClassEx struct {
 	size uint32
 
@@ -141,11 +140,16 @@ type WndClassEx struct {
 	iconSm     windows.Handle
 }
 
+// Atom is a returned value from RegisterClassEx()
+type Atom uint16
+
+// Point holds x and y.
 type Point struct {
 	x int32
 	y int32
 }
 
+// Msg is a message struct for the message loop.
 type Msg struct {
 	hwnd    windows.Handle
 	message uint32
