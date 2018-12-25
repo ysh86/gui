@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/ysh86/gui/gui"
+	"github.com/ysh86/gui"
 )
 
 func main() {
-	a := &gui.Application{}
+	a := gui.NewApplication()
 	if err := a.Init(); err != nil {
 		panic(err)
 	}

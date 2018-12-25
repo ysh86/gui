@@ -14,7 +14,7 @@ func init() {
 	MessageBoxEx(0, textUTF16, captionUTF16, 0, 0)
 }
 
-type Application struct {
+type application struct {
 	instance windows.Handle
 	cmdLine  string
 	cmdShow  int32
@@ -23,7 +23,12 @@ type Application struct {
 	wnds []windows.Handle
 }
 
-func (a *Application) Init() error {
+// NewApplication creates a new GUI application.
+func NewApplication() Application {
+	return &application{}
+}
+
+func (a *application) Init() error {
 	// dummy _tWinMain()
 	i, err := GetModuleHandle(nil)
 	if err != nil {
@@ -63,7 +68,7 @@ func (a *Application) Init() error {
 	return nil
 }
 
-func (a *Application) Loop() <-chan error {
+func (a *application) Loop() <-chan error {
 	errc := make(chan error, 1)
 
 	go func() {
