@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"unsafe"
 
+	"github.com/ysh86/d2d1"
 	"golang.org/x/sys/windows"
 )
 
@@ -19,6 +20,7 @@ type application struct {
 	cmdLine  string
 	cmdShow  int32
 	atom     Atom
+	factory  *d2d1.Factory
 
 	wnds []windows.Handle
 }
@@ -64,6 +66,23 @@ func (a *application) Init() error {
 		return fmt.Errorf("RegisterClassEx %v: %v", wndClass, err)
 	}
 	a.atom = atom
+
+	// D2D1
+	factory, err := d2d1.CreateFactory(d2d1.FACTORY_TYPE_SINGLE_THREADED, nil)
+	if err != nil {
+		return err
+	}
+	a.factory = factory
+
+	return nil
+}
+
+func (a *application) Deinit() error {
+	if a != nil {
+		if a.factory != nil {
+			a.factory.Release()
+		}
+	}
 
 	return nil
 }

@@ -19,6 +19,10 @@ func (a *application) Init() error {
 	return nil
 }
 
+func (a *application) Deinit() error {
+	return nil
+}
+
 func (a *application) Loop() <-chan error {
 	errc := make(chan error, 1)
 

@@ -11,6 +11,7 @@ func main() {
 	if err := a.Init(); err != nil {
 		panic(err)
 	}
+	defer a.Deinit()
 
 	errc := a.Loop()
 	select {

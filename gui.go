@@ -2,6 +2,7 @@ package gui
 
 type Application interface {
 	Init() error
+	Deinit() error
 	Loop() <-chan error
 }
 
