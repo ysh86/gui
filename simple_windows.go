@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"unsafe"
 
@@ -70,7 +71,7 @@ func (a *application) Init() error {
 	// D2D1
 	factory, err := d2d1.CreateFactory(d2d1.FACTORY_TYPE_SINGLE_THREADED, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("D2D1: %v", err)
 	}
 	a.factory = factory
 
@@ -80,6 +81,8 @@ func (a *application) Init() error {
 func (a *application) Deinit() error {
 	if a != nil {
 		if a.factory != nil {
+			// debug
+			fmt.Fprintf(os.Stderr, "Deinit: D2D1 Factory %s: %#v\n", d2d1.IID_ID2D1Factory, a.factory)
 			a.factory.Release()
 		}
 	}
@@ -135,7 +138,8 @@ func (a *application) Loop() <-chan error {
 				return
 			}
 
-			fmt.Printf("GetMessage: %p, 0x%08x, %p\n", unsafe.Pointer(w), msg.message, unsafe.Pointer(msg.wparam))
+			// debug
+			fmt.Fprintf(os.Stderr, "GetMessage: %p, 0x%08x, %p\n", unsafe.Pointer(w), msg.message, unsafe.Pointer(msg.wparam))
 			if result == 0 {
 				// WM_QUIT (wparam is ExitCode)
 				if msg.wparam == 0 {
@@ -155,7 +159,8 @@ func (a *application) Loop() <-chan error {
 }
 
 func windowProc(window windows.Handle, message uint32, wparam uintptr, lparam uintptr) uintptr {
-	fmt.Printf("windowProc: %p, 0x%08x\n", unsafe.Pointer(window), message)
+	// debug
+	fmt.Fprintf(os.Stderr, "windowProc: %p, 0x%08x\n", unsafe.Pointer(window), message)
 
 	var result uintptr
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ysh86/gui"
 )
@@ -21,5 +22,5 @@ func main() {
 		}
 	}
 
-	fmt.Println("Done")
+	fmt.Fprintln(os.Stderr, "Done")
 }
