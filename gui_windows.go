@@ -4,6 +4,14 @@ package gui
 
 import "golang.org/x/sys/windows"
 
+// objbase.h
+const (
+	COINIT_APARTMENTTHREADED = 2
+	COINIT_MULTITHREADED     = 0
+	COINIT_DISABLE_OLE1DDE   = 4
+	COINIT_SPEED_OVER_MEMORY = 8
+)
+
 // winuser.rh
 const (
 	// ShowWindow() codes
@@ -120,24 +128,35 @@ const (
 )
 const (
 	// Messages
-	WM_DESTROY = 0x0002
+	WM_DESTROY       = 0x0002
+	WM_SIZE          = 0x0005
+	WM_PAINT         = 0x000f
+	WM_DISPLAYCHANGE = 0x007e
 )
+
+// macros
+func LOWORD(value uintptr) uint16 {
+	return uint16(value & 0xFFFF)
+}
+func HIWORD(value uintptr) uint16 {
+	return uint16((value >> 16) & 0xFFFF)
+}
 
 // WndClassEx is a struct for RegisterClassEx().
 type WndClassEx struct {
-	size uint32
+	Size uint32
 
-	style      uint32
-	wndProc    uintptr
-	clsExtra   int32
-	wndExtra   int32
-	instance   windows.Handle
-	icon       windows.Handle
-	cursor     windows.Handle
-	background windows.Handle
-	menuName   *uint16
-	className  *uint16
-	iconSm     windows.Handle
+	Style      uint32
+	WndProc    uintptr
+	ClsExtra   int32
+	WndExtra   int32
+	Instance   windows.Handle
+	Icon       windows.Handle
+	Cursor     windows.Handle
+	Background windows.Handle
+	MenuName   *uint16
+	ClassName  *uint16
+	IconSm     windows.Handle
 }
 
 // Atom is a returned value from RegisterClassEx()
@@ -145,8 +164,16 @@ type Atom uint16
 
 // Point holds x and y.
 type Point struct {
-	x int32
-	y int32
+	X int32
+	Y int32
+}
+
+// Rect holds left, top, right and bottom.
+type Rect struct {
+	Left   int32
+	Top    int32
+	Right  int32
+	Bottom int32
 }
 
 // Msg is a message struct for the message loop.
@@ -162,6 +189,8 @@ type Msg struct {
 // windows api calls
 
 //sys	GetModuleHandle(modulename *uint16) (module windows.Handle, err error) = GetModuleHandleW
+//sys	CoInitializeEx(reserved uintptr, coInit uint32) (err error) [failretval!=0] = ole32.CoInitializeEx
+//sys	CoUninitialize() = ole32.CoUninitialize
 //sys	MessageBoxEx(window windows.Handle, text *uint16, caption *uint16, style uint32, languageID uint16) (id int32, err error) = user32.MessageBoxExW
 //sys	RegisterClassEx(class *WndClassEx) (atom Atom, err error) = user32.RegisterClassExW
 //sys	CreateWindowEx(exStyle uint32, classname *uint16, windowname *uint16, style uint32, x int32, y int32, width int32, height int32, parent windows.Handle, menu windows.Handle, instance windows.Handle, lparam uintptr) (window windows.Handle, err error) = user32.CreateWindowExW
@@ -172,3 +201,6 @@ type Msg struct {
 //sys	TranslateMessage(message *Msg) (err error) = user32.TranslateMessage
 //sys	DispatchMessage(message *Msg) (result uintptr, err error) = user32.DispatchMessageW
 //sys	PostQuitMessage(exitCode int32) = user32.PostQuitMessage
+//sys	GetClientRect(window windows.Handle, rect *Rect) (err error) [failretval==0] = user32.GetClientRect
+//sys	ValidateRect(window windows.Handle, rect *Rect) (err error) [failretval==0] = user32.ValidateRect
+//sys	InvalidateRect(window windows.Handle, rect *Rect, erase bool) (err error) [failretval==0] = user32.InvalidateRect

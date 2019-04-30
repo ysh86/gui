@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/ysh86/d2d1"
 	"golang.org/x/sys/windows"
 )
 
@@ -21,7 +20,7 @@ type application struct {
 	cmdLine  string
 	cmdShow  int32
 	atom     Atom
-	factory  *d2d1.Factory
+	factory  *struct{} //d2d1.Factory
 
 	wnds []windows.Handle
 }
@@ -48,20 +47,20 @@ func (a *application) Init() error {
 		return fmt.Errorf("UTF16PtrFromString %s: %v", className, err)
 	}
 	wndClass := &WndClassEx{
-		size:       0,
-		style:      CS_HREDRAW | CS_VREDRAW,
-		wndProc:    windows.NewCallback(windowProc),
-		clsExtra:   0,
-		wndExtra:   0,
-		instance:   a.instance,
-		icon:       0,
-		cursor:     0,
-		background: windows.Handle(COLOR_WINDOW + 1),
-		menuName:   nil,
-		className:  classNameUTF16,
-		iconSm:     0,
+		Size:       0,
+		Style:      CS_HREDRAW | CS_VREDRAW,
+		WndProc:    windows.NewCallback(windowProc),
+		ClsExtra:   0,
+		WndExtra:   0,
+		Instance:   a.instance,
+		Icon:       0,
+		Cursor:     0,
+		Background: windows.Handle(COLOR_WINDOW + 1),
+		MenuName:   nil,
+		ClassName:  classNameUTF16,
+		IconSm:     0,
 	}
-	wndClass.size = uint32(unsafe.Sizeof(*wndClass))
+	wndClass.Size = uint32(unsafe.Sizeof(*wndClass))
 	atom, err := RegisterClassEx(wndClass)
 	if err != nil {
 		return fmt.Errorf("RegisterClassEx %v: %v", wndClass, err)
@@ -69,11 +68,11 @@ func (a *application) Init() error {
 	a.atom = atom
 
 	// D2D1
-	factory, err := d2d1.CreateFactory(d2d1.FACTORY_TYPE_SINGLE_THREADED, nil)
+	//factory, err := d2d1.CreateFactory(d2d1.FACTORY_TYPE_SINGLE_THREADED, nil)
 	if err != nil {
 		return fmt.Errorf("D2D1: %v", err)
 	}
-	a.factory = factory
+	a.factory = nil //factory
 
 	return nil
 }
@@ -82,8 +81,8 @@ func (a *application) Deinit() error {
 	if a != nil {
 		if a.factory != nil {
 			// debug
-			fmt.Fprintf(os.Stderr, "Deinit: D2D1 Factory %s: %#v\n", d2d1.IID_ID2D1Factory, a.factory)
-			a.factory.Release()
+			//fmt.Fprintf(os.Stderr, "Deinit: D2D1 Factory %s: %#v\n", d2d1.IID_ID2D1Factory, a.factory)
+			//a.factory.Release()
 		}
 	}
 

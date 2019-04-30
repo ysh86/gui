@@ -38,9 +38,12 @@ func errnoErr(e syscall.Errno) error {
 
 var (
 	modkernel32 = windows.NewLazySystemDLL("kernel32.dll")
+	modole32    = windows.NewLazySystemDLL("ole32.dll")
 	moduser32   = windows.NewLazySystemDLL("user32.dll")
 
 	procGetModuleHandleW = modkernel32.NewProc("GetModuleHandleW")
+	procCoInitializeEx   = modole32.NewProc("CoInitializeEx")
+	procCoUninitialize   = modole32.NewProc("CoUninitialize")
 	procMessageBoxExW    = moduser32.NewProc("MessageBoxExW")
 	procRegisterClassExW = moduser32.NewProc("RegisterClassExW")
 	procCreateWindowExW  = moduser32.NewProc("CreateWindowExW")
@@ -51,6 +54,9 @@ var (
 	procTranslateMessage = moduser32.NewProc("TranslateMessage")
 	procDispatchMessageW = moduser32.NewProc("DispatchMessageW")
 	procPostQuitMessage  = moduser32.NewProc("PostQuitMessage")
+	procGetClientRect    = moduser32.NewProc("GetClientRect")
+	procValidateRect     = moduser32.NewProc("ValidateRect")
+	procInvalidateRect   = moduser32.NewProc("InvalidateRect")
 )
 
 func GetModuleHandle(modulename *uint16) (module windows.Handle, err error) {
@@ -63,6 +69,23 @@ func GetModuleHandle(modulename *uint16) (module windows.Handle, err error) {
 			err = syscall.EINVAL
 		}
 	}
+	return
+}
+
+func CoInitializeEx(reserved uintptr, coInit uint32) (err error) {
+	r1, _, e1 := syscall.Syscall(procCoInitializeEx.Addr(), 2, uintptr(reserved), uintptr(coInit), 0)
+	if r1 != 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func CoUninitialize() {
+	syscall.Syscall(procCoUninitialize.Addr(), 0, 0, 0, 0)
 	return
 }
 
@@ -182,5 +205,47 @@ func DispatchMessage(message *Msg) (result uintptr, err error) {
 
 func PostQuitMessage(exitCode int32) {
 	syscall.Syscall(procPostQuitMessage.Addr(), 1, uintptr(exitCode), 0, 0)
+	return
+}
+
+func GetClientRect(window windows.Handle, rect *Rect) (err error) {
+	r1, _, e1 := syscall.Syscall(procGetClientRect.Addr(), 2, uintptr(window), uintptr(unsafe.Pointer(rect)), 0)
+	if r1 == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func ValidateRect(window windows.Handle, rect *Rect) (err error) {
+	r1, _, e1 := syscall.Syscall(procValidateRect.Addr(), 2, uintptr(window), uintptr(unsafe.Pointer(rect)), 0)
+	if r1 == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func InvalidateRect(window windows.Handle, rect *Rect, erase bool) (err error) {
+	var _p0 uint32
+	if erase {
+		_p0 = 1
+	} else {
+		_p0 = 0
+	}
+	r1, _, e1 := syscall.Syscall(procInvalidateRect.Addr(), 3, uintptr(window), uintptr(unsafe.Pointer(rect)), uintptr(_p0))
+	if r1 == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
 	return
 }
