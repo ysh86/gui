@@ -45,6 +45,8 @@ var (
 	procCoInitializeEx   = modole32.NewProc("CoInitializeEx")
 	procCoUninitialize   = modole32.NewProc("CoUninitialize")
 	procMessageBoxExW    = moduser32.NewProc("MessageBoxExW")
+	procLoadIconW        = moduser32.NewProc("LoadIconW")
+	procLoadCursorW      = moduser32.NewProc("LoadCursorW")
 	procRegisterClassExW = moduser32.NewProc("RegisterClassExW")
 	procCreateWindowExW  = moduser32.NewProc("CreateWindowExW")
 	procShowWindow       = moduser32.NewProc("ShowWindow")
@@ -93,6 +95,32 @@ func MessageBoxEx(window windows.Handle, text *uint16, caption *uint16, style ui
 	r0, _, e1 := syscall.Syscall6(procMessageBoxExW.Addr(), 5, uintptr(window), uintptr(unsafe.Pointer(text)), uintptr(unsafe.Pointer(caption)), uintptr(style), uintptr(languageID), 0)
 	id = int32(r0)
 	if id == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func LoadIcon(instance windows.Handle, iconName *uint16) (icon windows.Handle, err error) {
+	r0, _, e1 := syscall.Syscall(procLoadIconW.Addr(), 2, uintptr(instance), uintptr(unsafe.Pointer(iconName)), 0)
+	icon = windows.Handle(r0)
+	if icon == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func LoadCursor(instance windows.Handle, cursorName *uint16) (cursor windows.Handle, err error) {
+	r0, _, e1 := syscall.Syscall(procLoadCursorW.Addr(), 2, uintptr(instance), uintptr(unsafe.Pointer(cursorName)), 0)
+	cursor = windows.Handle(r0)
+	if cursor == 0 {
 		if e1 != 0 {
 			err = errnoErr(e1)
 		} else {

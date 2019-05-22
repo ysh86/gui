@@ -46,6 +46,14 @@ func (a *application) Init() error {
 	if err != nil {
 		return fmt.Errorf("UTF16PtrFromString %s: %v", className, err)
 	}
+	icon, err := LoadIcon(0, MAKEINTRESOURCE(IDI_APPLICATION))
+	if err != nil {
+		return fmt.Errorf("LoadIcon: %v", err)
+	}
+	cursor, err := LoadCursor(0, MAKEINTRESOURCE(IDC_ARROW))
+	if err != nil {
+		return fmt.Errorf("LoadCursor: %v", err)
+	}
 	wndClass := &WndClassEx{
 		Size:       0,
 		Style:      CS_HREDRAW | CS_VREDRAW,
@@ -53,8 +61,8 @@ func (a *application) Init() error {
 		ClsExtra:   0,
 		WndExtra:   0,
 		Instance:   a.instance,
-		Icon:       0,
-		Cursor:     0,
+		Icon:       icon,
+		Cursor:     cursor,
 		Background: windows.Handle(COLOR_WINDOW + 1),
 		MenuName:   nil,
 		ClassName:  classNameUTF16,
