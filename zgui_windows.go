@@ -41,24 +41,26 @@ var (
 	modole32    = windows.NewLazySystemDLL("ole32.dll")
 	moduser32   = windows.NewLazySystemDLL("user32.dll")
 
-	procGetModuleHandleW = modkernel32.NewProc("GetModuleHandleW")
-	procCoInitializeEx   = modole32.NewProc("CoInitializeEx")
-	procCoUninitialize   = modole32.NewProc("CoUninitialize")
-	procMessageBoxExW    = moduser32.NewProc("MessageBoxExW")
-	procLoadIconW        = moduser32.NewProc("LoadIconW")
-	procLoadCursorW      = moduser32.NewProc("LoadCursorW")
-	procRegisterClassExW = moduser32.NewProc("RegisterClassExW")
-	procCreateWindowExW  = moduser32.NewProc("CreateWindowExW")
-	procShowWindow       = moduser32.NewProc("ShowWindow")
-	procUpdateWindow     = moduser32.NewProc("UpdateWindow")
-	procDefWindowProcW   = moduser32.NewProc("DefWindowProcW")
-	procGetMessageW      = moduser32.NewProc("GetMessageW")
-	procTranslateMessage = moduser32.NewProc("TranslateMessage")
-	procDispatchMessageW = moduser32.NewProc("DispatchMessageW")
-	procPostQuitMessage  = moduser32.NewProc("PostQuitMessage")
-	procGetClientRect    = moduser32.NewProc("GetClientRect")
-	procValidateRect     = moduser32.NewProc("ValidateRect")
-	procInvalidateRect   = moduser32.NewProc("InvalidateRect")
+	procGetModuleHandleW  = modkernel32.NewProc("GetModuleHandleW")
+	procCoInitializeEx    = modole32.NewProc("CoInitializeEx")
+	procCoUninitialize    = modole32.NewProc("CoUninitialize")
+	procMessageBoxExW     = moduser32.NewProc("MessageBoxExW")
+	procLoadIconW         = moduser32.NewProc("LoadIconW")
+	procLoadCursorW       = moduser32.NewProc("LoadCursorW")
+	procRegisterClassExW  = moduser32.NewProc("RegisterClassExW")
+	procCreateWindowExW   = moduser32.NewProc("CreateWindowExW")
+	procShowWindow        = moduser32.NewProc("ShowWindow")
+	procUpdateWindow      = moduser32.NewProc("UpdateWindow")
+	procDefWindowProcW    = moduser32.NewProc("DefWindowProcW")
+	procGetMessageW       = moduser32.NewProc("GetMessageW")
+	procTranslateMessage  = moduser32.NewProc("TranslateMessage")
+	procDispatchMessageW  = moduser32.NewProc("DispatchMessageW")
+	procPostQuitMessage   = moduser32.NewProc("PostQuitMessage")
+	procSetWindowLongPtrW = moduser32.NewProc("SetWindowLongPtrW")
+	procGetWindowLongPtrW = moduser32.NewProc("GetWindowLongPtrW")
+	procGetClientRect     = moduser32.NewProc("GetClientRect")
+	procValidateRect      = moduser32.NewProc("ValidateRect")
+	procInvalidateRect    = moduser32.NewProc("InvalidateRect")
 )
 
 func GetModuleHandle(modulename *uint16) (module windows.Handle, err error) {
@@ -180,8 +182,8 @@ func UpdateWindow(window windows.Handle) (err error) {
 	return
 }
 
-func DefWindowProc(window windows.Handle, message uint32, wparam uintptr, lparam uintptr) (result uintptr, err error) {
-	r0, _, e1 := syscall.Syscall6(procDefWindowProcW.Addr(), 4, uintptr(window), uintptr(message), uintptr(wparam), uintptr(lparam), 0, 0)
+func DefWindowProc(window windows.Handle, message uint32, wParam uintptr, lParam uintptr) (result uintptr, err error) {
+	r0, _, e1 := syscall.Syscall6(procDefWindowProcW.Addr(), 4, uintptr(window), uintptr(message), uintptr(wParam), uintptr(lParam), 0, 0)
 	result = uintptr(r0)
 	if result == 0 {
 		if e1 != 0 {
@@ -233,6 +235,32 @@ func DispatchMessage(message *Msg) (result uintptr, err error) {
 
 func PostQuitMessage(exitCode int32) {
 	syscall.Syscall(procPostQuitMessage.Addr(), 1, uintptr(exitCode), 0, 0)
+	return
+}
+
+func SetWindowLongPtr(window windows.Handle, index int32, newValue uintptr) (previous uintptr, err error) {
+	r0, _, e1 := syscall.Syscall(procSetWindowLongPtrW.Addr(), 3, uintptr(window), uintptr(index), uintptr(newValue))
+	previous = uintptr(r0)
+	if previous == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
+func GetWindowLongPtr(window windows.Handle, index int32) (result uintptr, err error) {
+	r0, _, e1 := syscall.Syscall(procGetWindowLongPtrW.Addr(), 2, uintptr(window), uintptr(index), 0)
+	result = uintptr(r0)
+	if result == 0 {
+		if e1 != 0 {
+			err = errnoErr(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
 	return
 }
 

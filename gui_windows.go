@@ -128,6 +128,7 @@ const (
 )
 const (
 	// Messages
+	WM_CREATE        = 0x0001
 	WM_DESTROY       = 0x0002
 	WM_SIZE          = 0x0005
 	WM_PAINT         = 0x000F
@@ -166,6 +167,17 @@ const (
 	IDC_APPSTARTING = 32650
 	IDC_HELP        = 32651
 )
+const (
+	GWL_EXSTYLE    = -20
+	GWLP_HINSTANCE = -6
+	GWL_ID         = -12 // 32-bit only
+	GWLP_ID        = -12 // both 32-bit and 64-bit
+	GWL_STYLE      = -16
+	GWLP_USERDATA  = -21
+	GWLP_WNDPROC   = -4
+
+	GWLP_HWNDPARENT = -8 // Don't use! Use the SetParent function.
+)
 
 // macros
 func MAKEINTRESOURCE(value uint16) *uint16 {
@@ -195,6 +207,22 @@ type WndClassEx struct {
 	IconSm     windows.Handle
 }
 
+// CreateStruct is the initialization parameters passed to the window procedure of an application.
+type CreateStruct struct {
+	CreateParams uintptr
+	Instance     windows.Handle
+	Menu         windows.Handle
+	Parent       windows.Handle
+	CY           int32 // height
+	CX           int32 // width
+	Y            int32
+	X            int32
+	Style        uint32
+	Name         *uint16
+	Class        *uint16
+	ExStyle      uint32
+}
+
 // Atom is a returned value from RegisterClassEx()
 type Atom uint16
 
@@ -216,8 +244,8 @@ type Rect struct {
 type Msg struct {
 	hwnd    windows.Handle
 	message uint32
-	wparam  uintptr
-	lparam  uintptr
+	wParam  uintptr
+	lParam  uintptr
 	time    uint32
 	pt      Point
 }
@@ -234,11 +262,13 @@ type Msg struct {
 //sys	CreateWindowEx(exStyle uint32, classname *uint16, windowname *uint16, style uint32, x int32, y int32, width int32, height int32, parent windows.Handle, menu windows.Handle, instance windows.Handle, lparam uintptr) (window windows.Handle, err error) = user32.CreateWindowExW
 //sys	ShowWindow(window windows.Handle, command int32) (err error) [failretval!=0] = user32.ShowWindow
 //sys	UpdateWindow(window windows.Handle) (err error) = user32.UpdateWindow
-//sys	DefWindowProc(window windows.Handle, message uint32, wparam uintptr, lparam uintptr) (result uintptr, err error) = user32.DefWindowProcW
+//sys	DefWindowProc(window windows.Handle, message uint32, wParam uintptr, lParam uintptr) (result uintptr, err error) = user32.DefWindowProcW
 //sys	GetMessage(message *Msg, window windows.Handle, messageFilterMin uint32, messageFilterMax uint32) (result int32, err error) [failretval==-1] = user32.GetMessageW
 //sys	TranslateMessage(message *Msg) (err error) = user32.TranslateMessage
 //sys	DispatchMessage(message *Msg) (result uintptr, err error) = user32.DispatchMessageW
 //sys	PostQuitMessage(exitCode int32) = user32.PostQuitMessage
+//sys	SetWindowLongPtr(window windows.Handle, index int32, newValue uintptr) (previous uintptr, err error) [failretval==0] = user32.SetWindowLongPtrW
+//sys	GetWindowLongPtr(window windows.Handle, index int32) (result uintptr, err error) [failretval==0] = user32.GetWindowLongPtrW
 //sys	GetClientRect(window windows.Handle, rect *Rect) (err error) [failretval==0] = user32.GetClientRect
 //sys	ValidateRect(window windows.Handle, rect *Rect) (err error) [failretval==0] = user32.ValidateRect
 //sys	InvalidateRect(window windows.Handle, rect *Rect, erase bool) (err error) [failretval==0] = user32.InvalidateRect

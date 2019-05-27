@@ -9,12 +9,14 @@ import (
 
 func main() {
 	a := gui.NewApplication()
+
 	if err := a.Init(); err != nil {
 		panic(err)
 	}
 	defer a.Deinit()
 
-	errc := a.Loop()
+	windowName := "single window"
+	errc := a.Loop(windowName, nil)
 	select {
 	case e := <-errc:
 		if e != nil {

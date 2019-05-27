@@ -3,6 +3,7 @@ package gui
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"runtime"
 	"unsafe"
 
@@ -20,9 +21,9 @@ type application struct {
 	cmdLine  string
 	cmdShow  int32
 	atom     Atom
-	factory  *struct{} //d2d1.Factory
 
-	wnds []windows.Handle
+	hwnds     []windows.Handle
+	renderers []Renderer
 }
 
 // NewApplication creates a new GUI application.
@@ -41,7 +42,7 @@ func (a *application) Init() error {
 	a.cmdShow = SW_SHOWNORMAL
 
 	// register a window class
-	className := "This is a simple window app."
+	className := "GO GUI: simple window app"
 	classNameUTF16, err := windows.UTF16PtrFromString(className)
 	if err != nil {
 		return fmt.Errorf("UTF16PtrFromString %s: %v", className, err)
@@ -57,7 +58,7 @@ func (a *application) Init() error {
 	wndClass := &WndClassEx{
 		Size:       0,
 		Style:      CS_HREDRAW | CS_VREDRAW,
-		WndProc:    windows.NewCallback(windowProc),
+		WndProc:    windows.NewCallback(a.windowProc),
 		ClsExtra:   0,
 		WndExtra:   0,
 		Instance:   a.instance,
@@ -75,64 +76,31 @@ func (a *application) Init() error {
 	}
 	a.atom = atom
 
-	// D2D1
-	//factory, err := d2d1.CreateFactory(d2d1.FACTORY_TYPE_SINGLE_THREADED, nil)
-	if err != nil {
-		return fmt.Errorf("D2D1: %v", err)
-	}
-	a.factory = nil //factory
-
 	return nil
 }
 
 func (a *application) Deinit() error {
 	if a != nil {
-		if a.factory != nil {
-			// debug
-			//fmt.Fprintf(os.Stderr, "Deinit: D2D1 Factory %s: %#v\n", d2d1.IID_ID2D1Factory, a.factory)
-			//a.factory.Release()
-		}
+		/*
+			for _, r := range a.renderers {
+				// nothing to do
+			}
+		*/
 	}
 
 	return nil
 }
 
-func (a *application) Loop() <-chan error {
+func (a *application) Loop(windowName string, renderer Renderer) <-chan error {
 	errc := make(chan error, 1)
 
 	go func() {
 		// lock thread for the GetMessage() API
 		runtime.LockOSThread()
 
-		// create a window
-		windowName := "single window"
-		windowNameUTF16, err := windows.UTF16PtrFromString(windowName)
+		w, err := a.appendWindow(windowName, renderer)
 		if err != nil {
-			errc <- fmt.Errorf("UTF16PtrFromString %s: %v", windowName, err)
-			return
-		}
-		w, err := CreateWindowEx(
-			0,
-			(*uint16)(unsafe.Pointer(uintptr(a.atom))),
-			windowNameUTF16,
-			WS_OVERLAPPEDWINDOW,
-			CW_USEDEFAULT, CW_USEDEFAULT,
-			CW_USEDEFAULT, CW_USEDEFAULT, // W x H
-			0,
-			0,
-			0,
-			0,
-		)
-		if err != nil {
-			errc <- fmt.Errorf("CreateWindowEx: %v", err)
-			return
-		}
-		a.wnds = append(a.wnds, w)
-
-		_ = ShowWindow(w, a.cmdShow) // ignore return value
-		err = UpdateWindow(w)
-		if err != nil {
-			errc <- fmt.Errorf("UpdateWindow %p: %v", unsafe.Pointer(w), err)
+			errc <- err
 			return
 		}
 
@@ -146,13 +114,13 @@ func (a *application) Loop() <-chan error {
 			}
 
 			// debug
-			fmt.Fprintf(os.Stderr, "GetMessage: %p, 0x%08x, %p\n", unsafe.Pointer(w), msg.message, unsafe.Pointer(msg.wparam))
+			fmt.Fprintf(os.Stderr, "GetMessage: %p, 0x%08x, %p\n", unsafe.Pointer(w), msg.message, unsafe.Pointer(msg.wParam))
 			if result == 0 {
-				// WM_QUIT (wparam is ExitCode)
-				if msg.wparam == 0 {
+				// WM_QUIT (wParam is ExitCode)
+				if msg.wParam == 0 {
 					errc <- nil
 				} else {
-					errc <- fmt.Errorf("GetMessage: %p, WM_QUIT, %d", unsafe.Pointer(w), msg.wparam)
+					errc <- fmt.Errorf("GetMessage: %p, WM_QUIT, %d", unsafe.Pointer(w), msg.wParam)
 				}
 				break
 			}
@@ -165,19 +133,85 @@ func (a *application) Loop() <-chan error {
 	return errc
 }
 
-func windowProc(window windows.Handle, message uint32, wparam uintptr, lparam uintptr) uintptr {
+func (a *application) appendWindow(name string, renderer Renderer) (windows.Handle, error) {
+	nameUTF16, err := windows.UTF16PtrFromString(name)
+	if err != nil {
+		return 0, fmt.Errorf("UTF16PtrFromString %s: %v", name, err)
+	}
+
+	var ptr uintptr
+	raw := reflect.ValueOf(renderer)
+	if raw.IsValid() && raw.Kind() == reflect.Ptr {
+		ptr = raw.Pointer()
+	}
+
+	w, err := CreateWindowEx(
+		0,
+		(*uint16)(unsafe.Pointer(uintptr(a.atom))),
+		nameUTF16,
+		WS_OVERLAPPEDWINDOW,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		CW_USEDEFAULT, CW_USEDEFAULT, // W x H
+		0,
+		0,
+		a.instance,
+		ptr,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("CreateWindowEx: %v", err)
+	}
+	a.hwnds = append(a.hwnds, w)
+	a.renderers = append(a.renderers, renderer)
+
+	_ = ShowWindow(w, a.cmdShow) // ignore return value
+	_ = UpdateWindow(w)          // ignore return value
+
+	return w, err
+}
+
+// TODO: debug flag 付けよう
+// TODO: support renderer
+// https://docs.microsoft.com/en-us/windows/desktop/direct2d/direct2d-quickstart
+// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-tagcreatestructa
+// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-setwindowlongptrw
+func (a *application) windowProc(window windows.Handle, message uint32, wParam uintptr, lParam uintptr) uintptr {
 	// debug
 	fmt.Fprintf(os.Stderr, "windowProc: %p, 0x%08x\n", unsafe.Pointer(window), message)
 
-	var result uintptr
+	// save renderer as user data
+	if message == WM_CREATE {
+		cs := (*CreateStruct)(unsafe.Pointer(lParam))
+		ptr := cs.CreateParams
 
-	switch message {
-	case WM_DESTROY:
-		PostQuitMessage(0)
-	default:
-		r, _ := DefWindowProc(window, message, wparam, lparam)
-		result = r
+		SetWindowLongPtr(
+			window,
+			GWLP_USERDATA,
+			ptr,
+		)
+
+		return 1
 	}
 
-	return result
+	// use user data as renderer
+	ptr, err := GetWindowLongPtr(
+		window,
+		GWLP_USERDATA,
+	)
+	if err != nil {
+		ptr = 0
+	}
+
+	switch message {
+	case WM_PAINT:
+		if ptr != 0 {
+			// render
+		}
+		return 0
+	case WM_DESTROY:
+		PostQuitMessage(0)
+		return 1
+	}
+
+	r, _ := DefWindowProc(window, message, wParam, lParam)
+	return r
 }

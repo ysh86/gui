@@ -23,7 +23,7 @@ func (a *application) Deinit() error {
 	return nil
 }
 
-func (a *application) Loop() <-chan error {
+func (a *application) Loop(windowName string, renderer Renderer) <-chan error {
 	errc := make(chan error, 1)
 
 	go func() {
@@ -35,7 +35,7 @@ func (a *application) Loop() <-chan error {
 
 		// message loop
 		for {
-			// ...
+			// drawing...
 
 			// quit
 			errc <- nil
