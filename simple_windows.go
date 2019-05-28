@@ -23,7 +23,7 @@ type application struct {
 	atom     Atom
 
 	hwnds     []windows.Handle
-	renderers []Renderer
+	renderers []*Renderer
 }
 
 // NewApplication creates a new GUI application.
@@ -139,12 +139,6 @@ func (a *application) appendWindow(name string, renderer Renderer) (windows.Hand
 		return 0, fmt.Errorf("UTF16PtrFromString %s: %v", name, err)
 	}
 
-	var ptr uintptr
-	raw := reflect.ValueOf(renderer)
-	if raw.IsValid() && raw.Kind() == reflect.Ptr {
-		ptr = raw.Pointer()
-	}
-
 	w, err := CreateWindowEx(
 		0,
 		(*uint16)(unsafe.Pointer(uintptr(a.atom))),
@@ -155,13 +149,13 @@ func (a *application) appendWindow(name string, renderer Renderer) (windows.Hand
 		0,
 		0,
 		a.instance,
-		ptr,
+		uintptr(unsafe.Pointer(&renderer)),
 	)
 	if err != nil {
 		return 0, fmt.Errorf("CreateWindowEx: %v", err)
 	}
 	a.hwnds = append(a.hwnds, w)
-	a.renderers = append(a.renderers, renderer)
+	a.renderers = append(a.renderers, &renderer)
 
 	_ = ShowWindow(w, a.cmdShow) // ignore return value
 	_ = UpdateWindow(w)          // ignore return value
@@ -170,10 +164,6 @@ func (a *application) appendWindow(name string, renderer Renderer) (windows.Hand
 }
 
 // TODO: debug flag 付けよう
-// TODO: support renderer
-// https://docs.microsoft.com/en-us/windows/desktop/direct2d/direct2d-quickstart
-// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/ns-winuser-tagcreatestructa
-// https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-setwindowlongptrw
 func (a *application) windowProc(window windows.Handle, message uint32, wParam uintptr, lParam uintptr) uintptr {
 	// debug
 	fmt.Fprintf(os.Stderr, "windowProc: %p, 0x%08x\n", unsafe.Pointer(window), message)
@@ -182,6 +172,15 @@ func (a *application) windowProc(window windows.Handle, message uint32, wParam u
 	if message == WM_CREATE {
 		cs := (*CreateStruct)(unsafe.Pointer(lParam))
 		ptr := cs.CreateParams
+
+		// check ptr is a valid Renderer
+		if ptr != 0 {
+			renderer := (*Renderer)(unsafe.Pointer(ptr))
+			raw := reflect.ValueOf(*renderer)
+			if !raw.IsValid() || raw.Kind() != reflect.Ptr || raw.IsNil() {
+				ptr = 0
+			}
+		}
 
 		SetWindowLongPtr(
 			window,
@@ -200,11 +199,12 @@ func (a *application) windowProc(window windows.Handle, message uint32, wParam u
 	if err != nil {
 		ptr = 0
 	}
+	renderer := (*Renderer)(unsafe.Pointer(ptr))
 
 	switch message {
 	case WM_PAINT:
-		if ptr != 0 {
-			// render
+		if renderer != nil {
+			// draw something...
 		}
 		return 0
 	case WM_DESTROY:
