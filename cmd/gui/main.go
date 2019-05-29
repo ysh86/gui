@@ -8,15 +8,15 @@ import (
 )
 
 func main() {
-	a := gui.NewApplication()
+	app := gui.NewApplication()
 
-	if err := a.Init(); err != nil {
+	if err := app.Init(); err != nil {
 		panic(err)
 	}
-	defer a.Deinit()
+	defer app.Deinit()
 
 	windowName := "single window"
-	errc := a.Loop(windowName, nil)
+	errc := app.Loop(windowName, 640, 480, nil)
 	select {
 	case e := <-errc:
 		if e != nil {

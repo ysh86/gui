@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"reflect"
 	"runtime"
@@ -21,9 +22,6 @@ type application struct {
 	cmdLine  string
 	cmdShow  int32
 	atom     Atom
-
-	hwnds     []windows.Handle
-	renderers []*Renderer
 }
 
 // NewApplication creates a new GUI application.
@@ -79,26 +77,42 @@ func (a *application) Init() error {
 	return nil
 }
 
-func (a *application) Deinit() error {
+func (a *application) Deinit() {
 	if a != nil {
-		/*
-			for _, r := range a.renderers {
-				// nothing to do
-			}
-		*/
+		// nothing to do
 	}
-
-	return nil
 }
 
-func (a *application) Loop(windowName string, renderer Renderer) <-chan error {
+func (a *application) Loop(windowName string, width int32, height int32, renderer Renderer) <-chan error {
 	errc := make(chan error, 1)
 
 	go func() {
-		// lock thread for the GetMessage() API
+		// lock thread for the GetMessage() API & Renderer
 		runtime.LockOSThread()
 
-		w, err := a.appendWindow(windowName, renderer)
+		// validate Renderer I/F
+		isValid := true
+		raw := reflect.ValueOf(renderer)
+		if !raw.IsValid() || raw.Kind() != reflect.Ptr || raw.IsNil() {
+			isValid = false
+		}
+
+		var ptr uintptr
+		if isValid {
+			err := renderer.Init()
+			if err != nil {
+				errc <- err
+				return
+			}
+			defer renderer.Deinit()
+
+			dpiX, dpiY := renderer.Dpi()
+			width = int32(math.Ceil(float64(float32(width) * dpiX / 96.0)))
+			height = int32(math.Ceil(float64(float32(height) * dpiY / 96.0)))
+			ptr = uintptr(unsafe.Pointer(&renderer))
+		}
+
+		w, err := a.appendWindow(windowName, width, height, ptr)
 		if err != nil {
 			errc <- err
 			return
@@ -133,7 +147,7 @@ func (a *application) Loop(windowName string, renderer Renderer) <-chan error {
 	return errc
 }
 
-func (a *application) appendWindow(name string, renderer Renderer) (windows.Handle, error) {
+func (a *application) appendWindow(name string, width int32, height int32, rendererPtr uintptr) (windows.Handle, error) {
 	nameUTF16, err := windows.UTF16PtrFromString(name)
 	if err != nil {
 		return 0, fmt.Errorf("UTF16PtrFromString %s: %v", name, err)
@@ -144,18 +158,16 @@ func (a *application) appendWindow(name string, renderer Renderer) (windows.Hand
 		(*uint16)(unsafe.Pointer(uintptr(a.atom))),
 		nameUTF16,
 		WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT,
-		CW_USEDEFAULT, CW_USEDEFAULT, // W x H
+		CW_USEDEFAULT, CW_USEDEFAULT, // x, y
+		width, height,
 		0,
 		0,
 		a.instance,
-		uintptr(unsafe.Pointer(&renderer)),
+		rendererPtr,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("CreateWindowEx: %v", err)
 	}
-	a.hwnds = append(a.hwnds, w)
-	a.renderers = append(a.renderers, &renderer)
 
 	_ = ShowWindow(w, a.cmdShow) // ignore return value
 	_ = UpdateWindow(w)          // ignore return value
@@ -172,15 +184,6 @@ func (a *application) windowProc(window windows.Handle, message uint32, wParam u
 	if message == WM_CREATE {
 		cs := (*CreateStruct)(unsafe.Pointer(lParam))
 		ptr := cs.CreateParams
-
-		// check ptr is a valid Renderer
-		if ptr != 0 {
-			renderer := (*Renderer)(unsafe.Pointer(ptr))
-			raw := reflect.ValueOf(*renderer)
-			if !raw.IsValid() || raw.Kind() != reflect.Ptr || raw.IsNil() {
-				ptr = 0
-			}
-		}
 
 		SetWindowLongPtr(
 			window,
@@ -202,9 +205,20 @@ func (a *application) windowProc(window windows.Handle, message uint32, wParam u
 	renderer := (*Renderer)(unsafe.Pointer(ptr))
 
 	switch message {
+	case WM_SIZE:
+		if renderer != nil {
+			width := uint32(LOWORD(lParam))
+			height := uint32(HIWORD(lParam))
+			(*renderer).Update(width, height)
+		}
+		return 0
+	case WM_DISPLAYCHANGE:
+		InvalidateRect(window, nil, false)
+		return 0
 	case WM_PAINT:
 		if renderer != nil {
-			// draw something...
+			(*renderer).Draw(uintptr(window))
+			ValidateRect(window, nil)
 		}
 		return 0
 	case WM_DESTROY:
