@@ -19,11 +19,13 @@ func (a *application) Init() error {
 	return nil
 }
 
-func (a *application) Deinit() error {
-	return nil
+func (a *application) Deinit() {
+	if a != nil {
+		// nothing to do
+	}
 }
 
-func (a *application) Loop(windowName string, renderer Renderer) <-chan error {
+func (a *application) Loop(windowName string, width int32, height int32, renderer Renderer) <-chan error {
 	errc := make(chan error, 1)
 
 	go func() {
