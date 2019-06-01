@@ -4,6 +4,7 @@ package gui
 type Application interface {
 	Init() error
 	Deinit()
+	EnableLog() error
 	Loop(windowName string, width int32, height int32, renderer Renderer) <-chan error
 }
 

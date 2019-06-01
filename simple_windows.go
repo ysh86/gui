@@ -2,6 +2,7 @@ package gui
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"reflect"
@@ -11,13 +12,9 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func init() {
-	captionUTF16, _ := windows.UTF16PtrFromString("Hello")
-	textUTF16, _ := windows.UTF16PtrFromString("from init(): Hello 世界")
-	MessageBoxEx(0, textUTF16, captionUTF16, 0, 0)
-}
-
 type application struct {
+	logger *log.Logger
+
 	instance windows.Handle
 	cmdLine  string
 	cmdShow  int32
@@ -27,6 +24,19 @@ type application struct {
 // NewApplication creates a new GUI application.
 func NewApplication() Application {
 	return &application{}
+}
+
+func (a *application) EnableLog() error {
+	a.logger = log.New(os.Stderr, "", log.Ldate|log.Lmicroseconds|log.Lshortfile)
+	if a.logger != nil {
+		a.logger.Print("start logging")
+	}
+
+	captionUTF16, _ := windows.UTF16PtrFromString("Hello")
+	textUTF16, _ := windows.UTF16PtrFromString("from logger: Hello 世界")
+	MessageBoxEx(0, textUTF16, captionUTF16, 0, 0)
+
+	return nil
 }
 
 func (a *application) Init() error {
@@ -127,8 +137,10 @@ func (a *application) Loop(windowName string, width int32, height int32, rendere
 				return
 			}
 
-			// debug
-			fmt.Fprintf(os.Stderr, "GetMessage: %p, 0x%08x, %p\n", unsafe.Pointer(w), msg.message, unsafe.Pointer(msg.wParam))
+			if a.logger != nil {
+				a.logger.Printf("GetMessage: %p, 0x%08x, %p, %p\n", unsafe.Pointer(w), msg.message, unsafe.Pointer(msg.wParam), unsafe.Pointer(msg.lParam))
+			}
+
 			if result == 0 {
 				// WM_QUIT (wParam is ExitCode)
 				if msg.wParam == 0 {
@@ -175,10 +187,10 @@ func (a *application) appendWindow(name string, width int32, height int32, rende
 	return w, err
 }
 
-// TODO: debug flag 付けよう
 func (a *application) windowProc(window windows.Handle, message uint32, wParam uintptr, lParam uintptr) uintptr {
-	// debug
-	fmt.Fprintf(os.Stderr, "windowProc: %p, 0x%08x\n", unsafe.Pointer(window), message)
+	if a.logger != nil {
+		a.logger.Printf("windowProc: %p, 0x%08x\n", unsafe.Pointer(window), message)
+	}
 
 	// save renderer as user data
 	if message == WM_CREATE {

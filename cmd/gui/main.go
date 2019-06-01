@@ -15,6 +15,10 @@ func main() {
 	}
 	defer app.Deinit()
 
+	if err := app.EnableLog(); err != nil {
+		panic(err)
+	}
+
 	windowName := "single window"
 	errc := app.Loop(windowName, 640, 480, nil)
 	select {

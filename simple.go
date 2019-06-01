@@ -3,16 +3,27 @@
 package gui
 
 import (
+	"log"
+	"os"
 	"runtime"
 )
 
 type application struct {
+	logger *log.Logger
 	// ...
 }
 
 // NewApplication creates a new GUI application.
 func NewApplication() Application {
 	return &application{}
+}
+
+func (a *application) EnableLog() error {
+	a.logger = log.New(os.Stderr, "", log.Ldate|log.Lmicroseconds|log.Lshortfile)
+	if a.logger != nil {
+		a.logger.Print("start logging")
+	}
+	return nil
 }
 
 func (a *application) Init() error {
